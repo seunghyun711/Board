@@ -2,6 +2,7 @@ package com.board.BoardService.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 
@@ -13,6 +14,8 @@ import java.util.stream.Collectors;
 
 @Getter
 public class ErrorResponse {
+    private int status;
+    private String message;
     // DTO 멤버 변수 필드의 효성 검증 실패 시 발생하는 에러 정보를 담는 멤버 변수
     private List<FieldError> fieldErrors;
 
@@ -21,6 +24,11 @@ public class ErrorResponse {
 
     // 생성자를 private 으로 지정하여 ErrorResponse 클래스는 new 방식으로 ErrorResponse 객체를 생성할 수 없다.
 
+
+    public ErrorResponse(int status, String message) {
+        this.status = status;
+        this.message = message;
+    }
 
     private ErrorResponse(List<FieldError> fieldErrors, List<ConstraintViolationError> violationExceptions) {
         this.fieldErrors = fieldErrors;
@@ -44,6 +52,14 @@ public class ErrorResponse {
      */
     public static ErrorResponse of(Set<ConstraintViolation<?>> violations) {
         return new ErrorResponse(null, ConstraintViolationError.of(violations));
+    }
+
+    public static ErrorResponse of(HttpStatus httpStatus) {
+        return new ErrorResponse(httpStatus.value(), httpStatus.getReasonPhrase());
+    }
+
+    public static ErrorResponse of(HttpStatus httpStatus, String message) {
+        return new ErrorResponse(httpStatus.value(), message);
     }
 
 
