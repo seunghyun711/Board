@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest // MemberRepository의 기능을 정상적으로 사용하기 위한 Configuration을 스프링이 자동으로 추가 - @Transactional이 있다.
@@ -31,6 +33,25 @@ class MemberRepositoryTest {
         assertTrue(member.getNickname().equals(savedMember.getNickname()));
         assertTrue(member.getName().equals(savedMember.getName()));
         assertTrue(member.getPassword().equals(savedMember.getPassword()));
+    }
+
+    @DisplayName("회원 정보 조회 테스트")
+    @Test
+    public void findByEmailTest(){
+        // given
+        Member member = new Member();
+        member.setEmail("hong@naver.com");
+        member.setNickname("hong");
+        member.setName("seunghyun");
+        member.setPassword("a123456789");
+
+        // when
+        memberRepository.save(member);
+        Optional<Member> findMember = memberRepository.findByEmail(member.getEmail());
+
+        // then
+        assertTrue(findMember.isPresent());
+        assertTrue(findMember.get().getEmail().equals(member.getEmail()));
     }
 
 }
