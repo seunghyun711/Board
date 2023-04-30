@@ -2,6 +2,7 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '2.7.11'
 	id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+	id "org.asciidoctor.jvm.convert" version "3.3.2"    // .adoc 확장자를 가지는 AsciiDoc 문서를 생성해주는 플러그인 추가
 }
 
 group = 'com.board'
@@ -18,7 +19,22 @@ repositories {
 	mavenCentral()
 }
 
+// ext 변수의 set()을 사용해 API 문서 스니펫이 생성될 경로 지정
+ext {
+	set('snippetsDir', file("build/generated-snippets"))
+}
+
+// AsciiDoctor에서 사용되는 의존 그룹 지정 :asciidoctor task 실행 시 asciidoctorExtensions 그룹 지정
+configurations {
+	asciidoctorExtensions
+}
+
 dependencies {
+	// spring-restdocs-core, mockmvc 의존 라이브러리 추가
+	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
+	// spring-restdocs-asciidoctor 의존 라이브러리 추가
+	asciidoctorExtensions 'org.springframework.restdocs:spring-restdocs-asciidoctor'
+
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -38,6 +54,35 @@ dependencies {
 	implementation 'com.google.code.gson:gson'
 }
 
+// :test task 실행 시 API 문서 생성 스니펫 디렉토리 경로 설정
 tasks.named('test') {
+	outputs.dir snippetsDir
 	useJUnitPlatform()
+}
+
+// :asciidoctor task 실행 시 Asciidoctor 기능을 사용하기 위해 :asciidoctor task에 asciidoctorExtensions 설정
+tasks.named('asciidoctor') {
+	configurations "asciidoctorExtensions"
+	inputs.dir snippetsDir
+	dependsOn test
+}
+
+// :build task 실헹 전에 실행되는 task. :copyDocument가 실행되면 index.html파일이 src/main/resources/static/docsdp copy되고, 해당 index.html 파일은 API 문서를 파일 형태로 외부에 제공하기 위한 용도로 사용 가능
+task copyDocument(type: Copy) {
+	dependsOn asciidoctor // :asciidoctor task가 실행 후 task가 실행되도록 의존성 설정
+	from file("${asciidoctor.outputDir}")   // "build.docs.asciidoc/" 경로에 생성되는 index.html을 copy 후
+	into file("src/main/resources/static/docs")  // src/main/resources/static/docs 경로로 index.html을 추가
+}
+
+build {
+	dependsOn copyDocument  // :build task가 실행되기 전 :copyDocument task가 먼저 실행되도록
+}
+
+// 애플리케이션 실행 파일이 생성하는 :bootjar task 설정
+bootJar {
+	dependsOn copyDocument // :bootJar task 실행 전 :copyDocument task가 수행되도록 한다.
+	// Asciidoctor 실행으로 생성되는 index.html 파일을 jar 파일 안에 추가
+	from ("${asciidoctor.outputDir}") {
+		into 'static/docs'
+	}
 }
